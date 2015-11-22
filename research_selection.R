@@ -1,3 +1,13 @@
+'
+`research_selection.R`
+
+This R script runs a small simulation of a research selection process that
+can produce a sponsorship effect without bias or research misconduct.  
+
+For discussion see here:  
+http://jefais.tumblr.com/post/133751046358/sponsorship-effects-without-bias
+'
+
 require(cowplot)
 require(ggplot2)
 
@@ -138,4 +148,5 @@ success_sd_plot <- ggplot() +
 outputs <- plot_grid(effect_plot, success_plot, effect_sd_plot, success_sd_plot, align = 'hv')
 outputs
 
-save_plot('outputs.jpeg', outputs, ncol = 2, nrow = 2, base_aspect_ratio = 1.3)
+# Uncomment to save
+#save_plot('outputs.jpeg', outputs, ncol = 2, nrow = 2, base_aspect_ratio = 1.3)
