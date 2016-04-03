@@ -9,8 +9,10 @@ http://jefais.tumblr.com/post/133751046358/sponsorship-effects-without-bias
 '
 
 library(cowplot)
-#require(ggplot2)
 library(dplyr)
+library(tikzDevice)
+	options(tikzDocumentDeclaration = "\\documentclass{philpaper}\n", 
+			tikzDefaultEngine = 'luatex')
 
 n_researchers <- 100		# no. researchers in each year
 n_years <- 20				# no. years to run each simulation
@@ -136,7 +138,8 @@ for (rho in rho_range) {
 		}
 	}
 }
-	
+
+# ------------------------------
 # Plot results for the entire simulation
 # Effect
 effect_plot <- ggplot() + 
@@ -183,11 +186,17 @@ success_sd_plot <- ggplot() +
 # 					 align = 'hv', labels = c('A', 'B', 'C', 'D'))
 outputs <- plot_grid(effect_plot, success_plot, 
 					 align = 'hv', labels = c('A', 'B'))
-outputs
 
-# Uncomment to save
+# Uncomment to save as tikz
+#tikz(file = 'outputs.tex', height = 3.5)
+outputs
+#dev.off()
+
+# Uncomment to save as png
 #save_plot('outputs.png', outputs, ncol = 2, nrow = 1, base_aspect_ratio = 1)
 
+
+# ------------------------------
 # Plot results for one run with rho = .25
 #  NB reps 6 and 10 split the median value for success.mean in year = 20
 data_year_filter <- data_year %>% filter(rho == .25, rep == 6)
@@ -247,9 +256,13 @@ success_sd_plot_filter <- ggplot() +
 # 					 align = 'hv', labels = c('A', 'B', 'C', 'D'))
 outputs_filter <- plot_grid(effect_plot_filter, success_plot_filter, 
 							align = 'hv', labels = c('A', 'B'))
-outputs_filter
 
-# Uncomment to save
+# Uncomment to save as tikz
+#tikz(file = 'outputs-filter.tex', height = 3.5)
+outputs_filter
+#dev.off()
+
+# Uncomment to save as png
 #save_plot('outputs_filter.png', outputs_filter, ncol = 2, nrow = 1, base_aspect_ratio = 1)
 
 combined <- plot_grid(effect_plot_filter, success_plot_filter, effect_plot, success_plot, 
