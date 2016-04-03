@@ -8,25 +8,34 @@ For discussion see here:
 http://jefais.tumblr.com/post/133751046358/sponsorship-effects-without-bias
 '
 
-require(cowplot)
-require(ggplot2)
+library(cowplot)
+#require(ggplot2)
+library(dplyr)
 
-n_researchers <- 100		# no. researchers in each generation
-n_generations <- 20			# no. generations to run the simulation
-perc_replace <- .10			# what percentage of researchers to replace in each generation
+n_researchers <- 100		# no. researchers in each year
+n_years <- 20				# no. years to run each simulation
+perc_replace <- .1			# fraction of researchers to replace in each year
 
-n_experiments <- 20			# no. experiments run by each researcher in each generation
+n_experiments <- 30			# no. experiments run by each researcher in each year
 n <- 50						# sample size in each experiment
-perc_null <- .5				# percent of experiments where the null is true
-mu_bound <- 10				# positive bound on uniform distribution for mu ≠ 0
+sigma_mu <- 1				# standard deviation for true values of mu in experiments
+sigma <- .25				# standard deviation for noise in experiments
 alpha <- .05				# statistical significance threshold
+
+#rho <- .25					# ratio between researcher effect sd and sigma_mu
+							#  ie, how wide is range of researcher effects, compared 
+							#  to the range of experimental effects
+#tau <- 1 / (1 + rho^2)		# fraction of Var(mu) due to variance in researcher effects
+rho_range <- seq(from = 0, to = .5, length.out = 5)
+							# vector with values of rho to test
+n_rep <- 10					# no. repetitions of the simulation to run at each value of rho
 
 
 # Set a seed for the simulation
-set.seed(1029384756)
+set.seed(9876543)
 
 
-new_researchers <- function(n = perc_replace * n_researchers) {
+new_researchers <- function(rho, n = perc_replace * n_researchers) {
 	'
 	Generate a set of n new researchers
 	'
@@ -34,9 +43,7 @@ new_researchers <- function(n = perc_replace * n_researchers) {
 	#bound_effect <- 3.33		# positive bound on uniform distribution for researcher effect
 	#return(runif(perc_replace*n_researchers, min = -bound_effect, max = bound_effect))
 	# Use the next three lines for a Gaussian distribution
-	effect_mean = 0
-	effect_sd = 1
-	return(rnorm(n, mean = effect_mean, sd = effect_sd))
+	return(rnorm(n, mean = 0, sd = rho * sigma_mu))
 }
 
 run_experiments <- function (researcher_effect) {
@@ -48,105 +55,204 @@ run_experiments <- function (researcher_effect) {
 	results <- c()
 	for (exp in 1:n_experiments) {
 		# Generate the sample
-		null_true <- runif(1) >= perc_null
-		if (null_true) {
-			mu <- 0
-		} else {
-			mu <- runif(1, min = -mu_bound, max = mu_bound)
-		}
-		obs <- rnorm(n, mean = mu, sd = 1)
-		obs.effected <- obs + researcher_effect
-		p <- t.test(obs.effected, alternative = 'greater')$p.value
+		mu <- rnorm(1, mean = researcher_effect, sd = sigma_mu)
+		obs <- rnorm(n, mean = mu, sd = sigma)
+		p <- t.test(obs, alternative = 'greater')$p.value
 		results <- c(results, p <= alpha)
 	}
 	return(sum(results)/n_experiments)
 }
 
-# Estimate the no-replacement success rate
-no_selection <- c()
-researchers <- new_researchers(n_researchers)
-for (i in 1:n_generations) {
-	for (researcher in researchers) {
-		no_selection <- c(no_selection, run_experiments(researcher))
+no_selection <- function() {
+	'
+	Estimate the no-replacement success rate
+	'
+	no_selection <- c()
+	researchers <- new_researchers(rho, n_researchers)
+	for (i in 1:n_years) {
+		for (researcher in researchers) {
+			no_selection <- c(no_selection, run_experiments(researcher))
+		}
 	}
+	no_selection_mean <- mean(no_selection)
+	return(no_selection_mean)
 }
-no_selection_mean <- mean(no_selection)
+
+
+# Estimate the no-selection success rate
+#no_selection_mean <- no_selection()
 
 # Initialize the data frames to hold the data
 # The first one holds the researcher-level data. 
-#  This is long: each row has data for a single researcher in a single generation
-data_researcher <- data.frame(generation = c(), effect = c(), success.rate = c())
-# This one holds the generation-level data.
-#  Each row has data for a single generation
-data_generation <- data.frame(generation = c(), 
+#  This is long: each row has data for a single researcher in a single year
+data_researcher <- data.frame(year = c(), effect = c(), success.rate = c(), rho = c())
+# This one holds the year-level data.
+#  Each row has data for a single year
+data_year <- data.frame(year = c(), 
 							   effect.mean = c(), effect.sd = c(),
-							   success.mean = c(), success.sd = c())
+							   success.mean = c(), success.sd = c(),
+							   rho = c(), rep = c())
 
-# Generation 1 researchers
-researchers <- new_researchers(n_researchers)
 # Run the simulation:
-# For each generation, 
-for (gen in 1:n_generations) {
-	success_gen <- c()
-	# For each researcher, 
-	for (researcher_effect in researchers) {
-		# Run the experiments and get the success rate
-		success <- run_experiments(researcher_effect)
-		success_gen <- c(success_gen, success)
-		# Add the effect and success rates to the data.researcher frame
-		new_row <- data.frame(generation = gen, 
-							 effect = researcher_effect, 
-							 success.rate = success)
-		data_researcher <- rbind(data_researcher, new_row)
+for (rho in rho_range) {
+	print(rho)
+	for (rep in 1:n_rep){
+		print(rep)
+		# year 1 researchers
+		researchers <- new_researchers(rho, n_researchers)
+		# For each year, 
+		for (gen in 1:n_years) {
+			success_gen <- c()
+			# For each researcher, 
+			for (researcher_effect in researchers) {
+				# Run the experiments and get the success rate
+				success <- run_experiments(researcher_effect)
+				success_gen <- c(success_gen, success)
+				# Add the effect and success rates to the data_researcher frame
+				new_row <- data.frame(year = gen, 
+									  effect = researcher_effect, 
+									  success.rate = success,
+									  rho = rho, 
+									  rep = rep)
+				data_researcher <- rbind(data_researcher, new_row)
+			}
+			# Calculate the year-level statistics
+			new_row <- data.frame(year = gen, 
+								  effect.mean = mean(researchers), 
+								  effect.sd = sd(researchers),
+								  success.mean = mean(success_gen), 
+								  success.sd = sd(success_gen),
+								  rho = rho, 
+								  rep = rep)
+			# And add to the data_year frame
+			data_year <- rbind(data_year, new_row)
+			
+			# Researchers to keep
+			researchers <- sort(researchers)
+			keep <- researchers[(perc_replace*n_researchers+1) : n_researchers]
+			# New researchers
+			new <- new_researchers(rho)
+			researchers <- c(new, keep)
+		}
 	}
-	# Calculate the generation-level statistics
-	new_row <- data.frame(generation = gen, 
-						 effect.mean = mean(researchers), 
-						 effect.sd = sd(researchers),
-						 success.mean = mean(success_gen), 
-						 success.sd = sd(success_gen))
-	# And add to the data_generation frame
-	data_generation <- rbind(data_generation, new_row)
-	
-	# Researchers to keep
-	researchers <- sort(researchers)
-	keep <- researchers[(perc_replace*n_researchers+1) : n_researchers]
-	# New researchers
-	new <- new_researchers()
-	researchers <- c(new, keep)
 }
-
-# Plot simulation results
+	
+# Plot results for the entire simulation
 # Effect
-effect_plot <- ggplot() +
-	geom_point(data = data_researcher, aes(x = generation, y = effect), 
-			   alpha = .2, position = position_jitter(height=0)) +
-	geom_line(data = data_generation, aes(x = generation, y = effect.mean),
-			  size = 2, color = 'blue') +
+effect_plot <- ggplot() + 
+	aes(x = year, y = effect.mean, 
+		color = rho, group = interaction(rho, rep)) +
+	scale_color_continuous(guide = FALSE) +
+# 	geom_point(data = data_researcher, aes(y = effect),
+# 			   alpha = .1, position = position_jitter(height=0)) +
+	geom_line(data = data_year, size = 1, alpha = .2) +
+	geom_smooth(data = data_year, aes(group = rho), size = 2) +
 	ylab('researcher effect')
+	
 effect_sd_plot <- ggplot() +
-	geom_line(data = data_generation, aes(x = generation, y = effect.sd),
-			  size = 2, color = 'blue') +
+	aes(x = year, y = effect.sd, 
+		color = rho, group = interaction(rho, rep)) +
+	scale_color_continuous(guide = FALSE) +
+	geom_line(data = data_year, size = 1, alpha = .2) +
+	geom_smooth(data = data_year, aes(group = rho), size = 2) +
 	ylab('researcher effect (sd)')
 #plot_grid(effect_plot, effect_sd_plot, align='h', ncol = 1)
 
 # Success rate
 success_plot <- ggplot() +
-	geom_point(data = data_researcher, aes(x = generation, y = success.rate), 
-			   alpha = .2, position = position_jitter(height=0)) +
-	geom_line(data = data_generation, aes(x = generation, y = success.mean),
-			  size = 2, color = 'blue') +
-	geom_hline(aes(yintercept = no_selection_mean), 
-			   size = 1, color = 'red', linetype = 'dashed') +
+	aes(x = year, y = success.mean, 
+		color = rho, group = interaction(rho, rep)) +
+	scale_color_continuous(guide = FALSE) +
+#  	geom_point(data = data_researcher, aes(y = success.rate), 
+#  			   alpha = .1, position = position_jitter(height=0)) +
+	geom_line(data = data_year, size = 1, alpha = .2) +
+	geom_smooth(data = data_year, aes(group = rho), size = 2) +
+#	geom_hline(aes(yintercept = no_selection_mean), 
+#			   size = 1, color = 'red', linetype = 'dashed') +
 	ylab('success rate')
 success_sd_plot <- ggplot() +
-	geom_line(data = data_generation, aes(x = generation, y = success.sd),
-			  size = 2, color = 'blue') +
+	aes(x = year, y = success.sd, 
+		color = rho, group = interaction(rho, rep)) +
+	scale_color_continuous(guide = FALSE) +
+	geom_line(data = data_year, size = 1, alpha = .2) +
+	geom_smooth(data = data_year, aes(group = rho), size = 2) +
 	ylab('success rate (sd)')
 #plot_grid(success_plot, success_sd_plot, align='h', ncol = 1)
 
-outputs <- plot_grid(effect_plot, success_plot, effect_sd_plot, success_sd_plot, align = 'hv')
+# outputs <- plot_grid(effect_plot, success_plot, effect_sd_plot, success_sd_plot, 
+# 					 align = 'hv', labels = c('A', 'B', 'C', 'D'))
+outputs <- plot_grid(effect_plot, success_plot, 
+					 align = 'hv', labels = c('A', 'B'))
 outputs
 
 # Uncomment to save
-#save_plot('outputs.jpeg', outputs, ncol = 2, nrow = 2, base_aspect_ratio = 1.3)
+#save_plot('outputs.png', outputs, ncol = 2, nrow = 1, base_aspect_ratio = 1)
+
+# Plot results for one run with rho = .25
+#  NB reps 6 and 10 split the median value for success.mean in year = 20
+data_year_filter <- data_year %>% filter(rho == .25, rep == 6)
+data_res_filter <- data_researcher %>% filter(rho == .25, rep == 6)
+# Effect
+effect_plot_filter <- ggplot() + 
+	aes(x = year, y = effect.mean, 
+		color = rho, group = interaction(rho, rep)) +
+	scale_color_continuous(guide = FALSE) +
+	geom_point(data = data_res_filter, aes(y = effect),
+			   alpha = .1, position = position_jitter(height=0)) +
+	geom_line(data = data_year_filter, size = 1, alpha = 1) +
+# 	geom_smooth(data = filter(data_year, rho == .25), 
+# 				aes(group = rho), size = 2) +
+	# Dashed line indicating the mean researcher effect when rho = 0
+	geom_hline(aes(yintercept = 
+				   	mean(filter(data_year, rho == 0)$effect.mean)), 
+			   size = .5, color = 'black', linetype = 'dashed') +
+	ylab('researcher effect')
+
+effect_sd_plot_filter <- ggplot() +
+	aes(x = year, y = effect.sd, 
+		color = rho, group = interaction(rho, rep)) +
+	scale_color_continuous(guide = FALSE) +
+	geom_line(data = data_year_filter, size = 1, alpha = 1) +
+	geom_smooth(data = filter(data_year, rho == .25), 
+				aes(group = rho), size = .5) +
+	ylab('researcher effect (sd)')
+#plot_grid(effect_plot, effect_sd_plot, align='h', ncol = 1)
+
+# Success rate
+success_plot_filter <- ggplot() +
+	aes(x = year, y = success.mean, 
+		color = rho, group = interaction(rho, rep)) +
+	scale_color_continuous(guide = FALSE) +
+ 	geom_point(data = data_res_filter, aes(y = success.rate), 
+ 			   alpha = .1, position = position_jitter(height=0)) +
+	geom_line(data = data_year_filter, size = 1, alpha = 1) +
+	#geom_smooth(data = filter(data_year, rho == .25), aes(group = rho), size = 2) +
+	# Dashed line indicating the mean researcher effect when rho = 0
+	geom_hline(aes(yintercept = 
+				   	mean(filter(data_year, rho == 0)$success.mean)), 
+			   size = .5, color = 'black', linetype = 'dashed') +
+	ylab('success rate')
+success_sd_plot_filter <- ggplot() +
+	aes(x = year, y = success.sd, 
+		color = rho, group = interaction(rho, rep)) +
+	scale_color_continuous(guide = FALSE) +
+	geom_line(data = data_year_filter, size = 1, alpha = 1) +
+	geom_smooth(data = filter(data_year, rho == .25), 
+				aes(group = rho), size = .5) +
+	ylab('success rate (sd)')
+#plot_grid(success_plot, success_sd_plot, align='h', ncol = 1)
+
+# outputs_filter <- plot_grid(effect_plot_filter, success_plot_filter, 
+# 					 effect_sd_plot_filter, success_sd_plot_filter, 
+# 					 align = 'hv', labels = c('A', 'B', 'C', 'D'))
+outputs_filter <- plot_grid(effect_plot_filter, success_plot_filter, 
+							align = 'hv', labels = c('A', 'B'))
+outputs_filter
+
+# Uncomment to save
+#save_plot('outputs_filter.png', outputs_filter, ncol = 2, nrow = 1, base_aspect_ratio = 1)
+
+combined <- plot_grid(effect_plot_filter, success_plot_filter, effect_plot, success_plot, 
+					  nrow = 2, align = 'hv', labels = c('A', 'B', 'C', 'D'))
+combined
+#save_plot('combined.png', combined, ncol = 2, nrow = 2, base_aspect_ratio = 1)
