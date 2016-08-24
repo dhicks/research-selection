@@ -15,8 +15,8 @@ library(tikzDevice)
 			tikzDefaultEngine = 'luatex')
 
 n_researchers <- 100		# no. researchers in each year
-n_years <- 20				# no. years to run each simulation
-perc_replace <- .1			# fraction of researchers to replace in each year
+n_years <- 30				# no. years to run each simulation
+perc_replace <- .05			# fraction of researchers to replace in each year
 
 n_experiments <- 30			# no. experiments run by each researcher in each year
 n <- 50						# sample size in each experiment
