@@ -198,9 +198,8 @@ outputs
 
 # ------------------------------
 # Plot results for one run with rho = .25
-#  NB reps 6 and 10 split the median value for success.mean in year = 20
-data_year_filter <- data_year %>% filter(rho == .25, rep == 6)
-data_res_filter <- data_researcher %>% filter(rho == .25, rep == 6)
+data_year_filter <- data_year %>% filter(rho == .25, rep == 1)
+data_res_filter <- data_researcher %>% filter(rho == .25, rep == 1)
 # Effect
 effect_plot_filter <- ggplot() + 
 	aes(x = year, y = effect.mean, 
@@ -208,7 +207,7 @@ effect_plot_filter <- ggplot() +
 	scale_color_continuous(guide = FALSE) +
 	geom_point(data = data_res_filter, aes(y = effect),
 			   alpha = .1, position = position_jitter(height=0)) +
-	geom_line(data = data_year_filter, size = 1, alpha = 1) +
+	geom_line(data = data_year_filter, size = 2, alpha = 1) +
 # 	geom_smooth(data = filter(data_year, rho == .25), 
 # 				aes(group = rho), size = 2) +
 	# Dashed line indicating the mean researcher effect when rho = 0
@@ -221,7 +220,7 @@ effect_sd_plot_filter <- ggplot() +
 	aes(x = year, y = effect.sd, 
 		color = rho, group = interaction(rho, rep)) +
 	scale_color_continuous(guide = FALSE) +
-	geom_line(data = data_year_filter, size = 1, alpha = 1) +
+	geom_line(data = data_year_filter, size = 2, alpha = 1) +
 	geom_smooth(data = filter(data_year, rho == .25), 
 				aes(group = rho), size = .5) +
 	ylab('researcher effect (sd)')
@@ -234,7 +233,7 @@ success_plot_filter <- ggplot() +
 	scale_color_continuous(guide = FALSE) +
  	geom_point(data = data_res_filter, aes(y = success.rate), 
  			   alpha = .1, position = position_jitter(height=0)) +
-	geom_line(data = data_year_filter, size = 1, alpha = 1) +
+	geom_line(data = data_year_filter, size = 2, alpha = 1) +
 	#geom_smooth(data = filter(data_year, rho == .25), aes(group = rho), size = 2) +
 	# Dashed line indicating the mean researcher effect when rho = 0
 	geom_hline(aes(yintercept = 
@@ -245,7 +244,7 @@ success_sd_plot_filter <- ggplot() +
 	aes(x = year, y = success.sd, 
 		color = rho, group = interaction(rho, rep)) +
 	scale_color_continuous(guide = FALSE) +
-	geom_line(data = data_year_filter, size = 1, alpha = 1) +
+	geom_line(data = data_year_filter, size = 2, alpha = 1) +
 	geom_smooth(data = filter(data_year, rho == .25), 
 				aes(group = rho), size = .5) +
 	ylab('success rate (sd)')
@@ -258,14 +257,14 @@ outputs_filter <- plot_grid(effect_plot_filter, success_plot_filter,
 							align = 'hv', labels = c('A', 'B'))
 
 # Uncomment to save as tikz
-#tikz(file = 'outputs-filter.tex', height = 3.5)
+tikz(file = 'outputs-filter.tex', height = 3.5)
 outputs_filter
-#dev.off()
+dev.off()
 
 # Uncomment to save as png
 #save_plot('outputs_filter.png', outputs_filter, ncol = 2, nrow = 1, base_aspect_ratio = 1)
 
-combined <- plot_grid(effect_plot_filter, success_plot_filter, effect_plot, success_plot, 
-					  nrow = 2, align = 'hv', labels = c('A', 'B', 'C', 'D'))
-combined
+# combined <- plot_grid(effect_plot_filter, success_plot_filter, effect_plot, success_plot, 
+# 					  nrow = 2, align = 'hv', labels = c('A', 'B', 'C', 'D'))
+# combined
 #save_plot('combined.png', combined, ncol = 2, nrow = 2, base_aspect_ratio = 1)
