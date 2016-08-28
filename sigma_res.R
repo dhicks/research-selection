@@ -51,7 +51,7 @@ sigma = .25
 dataf$mu = dataf$es / sigma
 
 ## ----------
-## Pull apart site and study effects using a multilevel linear model
+## Pull apart site and study effects using a multilevel model
 fit = lmer(mu ~ (1 | site) + (1 | study), dataf)
 sd(coef(fit)$site$`(Intercept)`)
 
@@ -71,15 +71,25 @@ model_string = '
 	}
 	parameters {
 		vector[n_sites] mu_site;
-		vector<lower = -5, upper = 15>[n_studies] mu_study;
+		vector[n_studies] mu_study;
 		
 		real<lower = 0> sigma_site;
+        real success_bias;
 	}
 	model { 
+        success_bias ~ normal(0, 3);
+        mu_study ~ normal(0, .1);
+
 		mu ~ normal(mu_site[site] + mu_study[study], 1);
-		mu_site ~ normal(0, sigma_site);
+        mu_site ~ normal(success_bias, sigma_site);
 	}
 '
+
+## NB If success_bias is used (rather than a fixed mean for the RHS of mu_site~), 
+##    then mu_study must also be included and tightly constrained.  
+##    Otherwise the MCMC process degenerates and effective sample sizes drop.  
+## Versions of this model that used a fixed mean had very similar posterior 
+##    distributions for sigma_mu.  
 
 stanfit = stan(model_code = model_string, 
 			   data = list(n_sites = max(dataf$site.code), 
@@ -102,6 +112,7 @@ stanfit
 # 
 # plot(stanfit, pars = 'mu_study')
 # plot(stanfit, pars = 'mu_site')
+# plot(stanfit, pars = 'success_bias')
 
 
 plot(stanfit, pars = 'sigma_site')
