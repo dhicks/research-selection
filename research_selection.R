@@ -28,9 +28,9 @@ alpha <- .05				# statistical significance threshold
 							#  ie, how wide is range of researcher effects, compared 
 							#  to the range of experimental effects
 #tau <- 1 / (1 + rho^2)		# fraction of Var(mu) due to variance in researcher effects
-rho_range <- seq(from = 0, to = .5, length.out = 5)
+rho_range <- seq(from = 0, to = 1.2, by = .2)
 							# vector with values of rho to test
-n_rep <- 10					# no. repetitions of the simulation to run at each value of rho
+n_rep <- 15					# no. repetitions of the simulation to run at each value of rho
 
 
 # Set a seed for the simulation
@@ -197,9 +197,9 @@ outputs
 
 
 # ------------------------------
-# Plot results for one run with rho = .25
-data_year_filter <- data_year %>% filter(rho == .25, rep == 1)
-data_res_filter <- data_researcher %>% filter(rho == .25, rep == 1)
+# Plot results for one run with rho = .4
+data_year_filter <- data_year %>% filter(rho == .4, rep == 1)
+data_res_filter <- data_researcher %>% filter(rho == .4, rep == 1)
 # Effect
 effect_plot_filter <- ggplot() + 
 	aes(x = year, y = effect.mean, 
@@ -221,7 +221,7 @@ effect_sd_plot_filter <- ggplot() +
 		color = rho, group = interaction(rho, rep)) +
 	scale_color_continuous(guide = FALSE) +
 	geom_line(data = data_year_filter, size = 2, alpha = 1) +
-	geom_smooth(data = filter(data_year, rho == .25), 
+	geom_smooth(data = filter(data_year, rho == .4), 
 				aes(group = rho), size = .5) +
 	ylab('researcher effect (sd)')
 #plot_grid(effect_plot, effect_sd_plot, align='h', ncol = 1)
@@ -245,7 +245,7 @@ success_sd_plot_filter <- ggplot() +
 		color = rho, group = interaction(rho, rep)) +
 	scale_color_continuous(guide = FALSE) +
 	geom_line(data = data_year_filter, size = 2, alpha = 1) +
-	geom_smooth(data = filter(data_year, rho == .25), 
+	geom_smooth(data = filter(data_year, rho == .4), 
 				aes(group = rho), size = .5) +
 	ylab('success rate (sd)')
 #plot_grid(success_plot, success_sd_plot, align='h', ncol = 1)
