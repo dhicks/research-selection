@@ -23,4 +23,4 @@ dataf.cs$mu_lo = dataf.cs$d_lo / .25
 dataf.cs$mu_hi = dataf.cs$d_hi / .25
 
 ## sigma_res = sqrt(var(mu) - 1)
-sqrt(var(dataf.cs$mu_hi) - 1)
+sd(dataf.cs$mu)
