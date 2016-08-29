@@ -9,6 +9,9 @@ http://jefais.tumblr.com/post/133751046358/sponsorship-effects-without-bias
 '
 
 library(cowplot)
+library(doParallel)
+	cl = makeCluster(4, outfile = '')
+	registerDoParallel(cl)
 library(dplyr)
 library(tikzDevice)
 	options(tikzDocumentDeclaration = "\\documentclass{philpaper}\n", 
@@ -95,49 +98,54 @@ data_year <- data.frame(year = c(),
 							   success.mean = c(), success.sd = c(),
 							   rho = c(), rep = c())
 
-# Run the simulation:
-for (rho in rho_range) {
-	print(rho)
-	for (rep in 1:n_rep){
-		print(rep)
-		# year 1 researchers
-		researchers <- new_researchers(rho, n_researchers)
-		# For each year, 
-		for (gen in 1:n_years) {
-			success_gen <- c()
-			# For each researcher, 
-			for (researcher_effect in researchers) {
-				# Run the experiments and get the success rate
-				success <- run_experiments(researcher_effect)
-				success_gen <- c(success_gen, success)
-				# Add the effect and success rates to the data_researcher frame
-				new_row <- data.frame(year = gen, 
-									  effect = researcher_effect, 
-									  success.rate = success,
-									  rho = rho, 
-									  rep = rep)
-				data_researcher <- rbind(data_researcher, new_row)
+ptime = system.time({
+	# Run the simulation:
+	data_researcher = foreach (rho=rho_range, .combine = rbind) %:% 
+		foreach(rep = 1:n_rep, .combine = rbind) %dopar% {
+			## Print a status update to the console
+			print(paste('rho: ', rho, '; rep ', rep, sep = ''))
+			data_researcher_this_rep = data.frame(year = c(), effect = c(), success.rate = c(), rho = c())
+			# year 1 researchers
+			researchers <- new_researchers(rho, n_researchers)
+			# For each year, 
+			for (gen in 1:n_years) {
+				success_gen <- c()
+				data_researcher_this_year = data.frame()
+				# For each researcher, 
+				for (researcher_effect in researchers) {
+					# Run the experiments and get the success rate
+					success <- run_experiments(researcher_effect)
+					# success_gen <- c(success_gen, success)
+					# Add the effect and success rates to the data_researcher frame
+					new_row <- data.frame(year = gen, 
+										  effect = researcher_effect, 
+										  success.rate = success,
+										  rho = rho, 
+										  rep = rep)
+					data_researcher_this_year <- rbind(data_researcher_this_year, new_row)
+				}
+				data_researcher_this_rep = rbind(data_researcher_this_rep, data_researcher_this_year)
+
+				# Researchers to keep
+				researchers <- sort(researchers)
+				keep <- researchers[(perc_replace*n_researchers+1) : n_researchers]
+				# New researchers
+				new <- new_researchers(rho)
+				researchers <- c(new, keep)
 			}
-			# Calculate the year-level statistics
-			new_row <- data.frame(year = gen, 
-								  effect.mean = mean(researchers), 
-								  effect.sd = sd(researchers),
-								  success.mean = mean(success_gen), 
-								  success.sd = sd(success_gen),
-								  rho = rho, 
-								  rep = rep)
-			# And add to the data_year frame
-			data_year <- rbind(data_year, new_row)
-			
-			# Researchers to keep
-			researchers <- sort(researchers)
-			keep <- researchers[(perc_replace*n_researchers+1) : n_researchers]
-			# New researchers
-			new <- new_researchers(rho)
-			researchers <- c(new, keep)
+			data_researcher_this_rep
 		}
-	}
-}
+})
+
+## How long did the simulation take? 
+ptime
+
+## Calculate year-level statistics
+data_year = data_researcher %>% group_by(year, rho, rep) %>% 
+	summarize(effect.mean = mean(effect), 
+			  effect.sd = sd(effect), 
+			  success.mean = mean(success.rate), 
+			  success.sd = sd(success.rate))
 
 # ------------------------------
 # Plot results for the entire simulation
@@ -188,9 +196,9 @@ outputs <- plot_grid(effect_plot, success_plot,
 					 align = 'hv', labels = c('A', 'B'))
 
 # Uncomment to save as tikz
-#tikz(file = 'outputs.tex', height = 3.5)
+tikz(file = 'outputs.tex', height = 3.5)
 outputs
-#dev.off()
+dev.off()
 
 # Uncomment to save as png
 #save_plot('outputs.png', outputs, ncol = 2, nrow = 1, base_aspect_ratio = 1)
