@@ -147,6 +147,8 @@ data_year = data_researcher %>% group_by(year, rho, rep) %>%
 			  success.mean = mean(success.rate), 
 			  success.sd = sd(success.rate))
 
+save(data_researcher, data_year, file = paste(Sys.Date(), '.Rdata', sep = ''))
+
 # ------------------------------
 # Plot results for the entire simulation
 # Effect
