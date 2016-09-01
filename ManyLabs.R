@@ -6,7 +6,7 @@ library(rstan)
 	rstan_options(auto_write = TRUE)
 	options(mc.cores = parallel::detectCores())
 
-## Use the Many Labs data to estimate sigma_res
+## Use the Many Labs data to estimate sigma_res, sigma_mu, and rho
 
 ## ----------
 ## Load data
