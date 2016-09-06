@@ -52,11 +52,11 @@ ggplot(data = data.frame(es = dataf$es,
 						 es_hat = predict(fit, dataf)), 
 	   aes(es, es_hat)) + geom_point()
 ## sigma_site
-sd(coef(fit)$site$`(Intercept)`)
+sigma_site.lmer = sd(coef(fit)$site$`(Intercept)`)
 ## sigma_mu
-sd(residuals(fit))
+sigma_mu.lmer = sd(residuals(fit))
 ## rho
-sd(coef(fit)$site$`(Intercept)`) / sd(residuals(fit))
+rho.lmer = sigma_site.lmer / sigma_mu.lmer
 ## Confidence intervals
 confint(fit)
 
@@ -83,9 +83,11 @@ model_string = '
 	}
     transformed parameters {
         vector[N] mu_hat;
+        real sigma_mu_tot;
         real<lower = 0> rho;
         mu_hat = mu_site[site] + mu_study[study];
-        rho = sigma_site / sigma_mu;
+        sigma_mu_tot = sqrt(sigma_mu^2 + sd(mu_study)^2);
+        rho = sigma_site / sigma_mu_tot;
     }
 	model {
         mu ~ normal(mu_hat, sigma_mu);
@@ -130,8 +132,8 @@ print(stanfit, include=FALSE, pars = 'mu_hat', probs = c(.2, .5, .8))
 # plot(stanfit, pars = 'mu_site')
 
 ## Summaries for the parameters of interest
-plot(stanfit, pars = c('sigma_site', 'sigma_mu', 'rho'))
-summary(stanfit, pars = c('sigma_site', 'sigma_mu', 'rho'), probs = c(.2, .5, .8)) %>%
+plot(stanfit, pars = c('sigma_site', 'sigma_mu_tot', 'rho'))
+summary(stanfit, pars = c('sigma_site', 'sigma_mu_tot', 'rho'), probs = c(.2, .5, .8)) %>%
 	.$summary %>% as.data.frame %>% 
 	select(mean, `20%`, `50%`, `80%`) %>%
 	knitr::kable(digits = 2)
